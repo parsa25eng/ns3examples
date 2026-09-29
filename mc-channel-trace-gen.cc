@@ -70,6 +70,14 @@ NS_LOG_COMPONENT_DEFINE("McChannelTraceGen");
 int
 main(int argc, char* argv[])
 {
+    // Diagnostic: print exactly where the process THINKS it's running from,
+    // before anything else happens. ./ns3 run does not necessarily preserve
+    // your shell's cwd - this line tells you, with certainty, what directory
+    // a bare "." would have resolved to if you don't pass --outputDir.
+    std::cout << "[info] Process starting cwd = " << std::filesystem::current_path().string()
+              << std::endl;
+    std::cout.flush();
+
     // ---------------------------------------------------------------
     // 1. Command-line parameters
     // ---------------------------------------------------------------
@@ -102,14 +110,16 @@ main(int argc, char* argv[])
 
     // Change the process's working directory BEFORE any trace file gets
     // created, so relative-path trace output lands in a run-specific folder
-    // regardless of how the ns3 launcher itself manages cwd. This is what
-    // makes it safe to run several instances of this binary in parallel
-    // (one per candidate gNB) without their trace files clobbering each other.
-    if (outputDir != ".")
-    {
-        std::filesystem::create_directories(outputDir);
-        std::filesystem::current_path(outputDir);
-    }
+    // regardless of how the ns3 launcher itself manages cwd. This runs even
+    // when outputDir is the default "." - do NOT treat "." as "skip this",
+    // since that was exactly what made trace files land somewhere silently
+    // different from where you expected. Always pass an ABSOLUTE path via
+    // --outputDir=$(pwd) from your shell to be certain where output goes.
+    std::filesystem::create_directories(outputDir);
+    std::filesystem::current_path(outputDir);
+    std::cout << "[info] Resolved outputDir to absolute path = "
+              << std::filesystem::current_path().string() << std::endl;
+    std::cout.flush();
 
     std::cout << "[info] mc-channel-trace-gen starting. attachGnb=" << attachGnb
               << " simTime=" << simTime << "s outputDir=" << outputDir << std::endl;
@@ -369,4 +379,3 @@ main(int argc, char* argv[])
 
     return 0;
 }
-
